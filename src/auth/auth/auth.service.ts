@@ -7,10 +7,16 @@ import { AppExceptionErrors } from 'src/utils/globa-exception';
 import { AppResponse } from '../../utils/app-response';
 import { User } from '@prisma/client';
 import { AppConstatnts } from '../../utils/app-constants';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private config: ConfigService,
+    private jwt: JwtService,
+  ) { }
 
   async signUp(dto: AuthDto): Promise<AppResponse<any>> {
     try {
@@ -54,6 +60,18 @@ export class AuthService {
       throw new ForbiddenException(
         AppExceptionErrors.Forbidden_Exception_ERROR,
       );
-    return new AppResponse<any>(200, user, AppConstatnts.SUCCESSFULL);
+    const jwt = { accessToken: await this.signTokent(user.id, user.email) };
+    return new AppResponse<any>(200, jwt, AppConstatnts.SUCCESSFULL);
+  }
+
+  signTokent(userId: number, email: string): Promise<string> {
+    const payload = {
+      sub: userId,
+      email,
+    };
+    return this.jwt.signAsync(payload, {
+      expiresIn: '15m',
+      secret: this.config.get('JWT_SECRET'),
+    });
   }
 }
